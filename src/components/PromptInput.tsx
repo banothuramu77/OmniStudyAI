@@ -94,7 +94,7 @@ export function PromptInput({ onSubmit, isLoading, onSelectPreset }: PromptInput
 
           <button
             type="submit"
-            disabled={!prompt.trim() || isLoading}
+            disabled={isLoading}
             className="flex items-center space-x-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 px-6 py-2.5 text-xs font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
           >
             {isLoading ? (
