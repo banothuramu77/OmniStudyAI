@@ -38,6 +38,9 @@ STRICT RULES:
 3. Ensure all options are realistic and correctIndex is within bounds.`;
 
 export async function POST(req: NextRequest) {
+  let fallbackDeck: any = null;
+  let fallbackInstruction = "";
+
   try {
     const body = await req.json().catch(() => null);
 
@@ -53,6 +56,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { currentDeck, instruction } = body;
+    fallbackDeck = currentDeck;
+    fallbackInstruction = instruction;
     const apiKey = process.env.GEMINI_API_KEY?.trim();
 
     if (!apiKey) {
@@ -121,6 +126,18 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error("Refine API error:", err);
+    const temporaryProviderFailure =
+      err?.status === 429 || err?.status === 503 || err?.message?.includes("high demand");
+
+    if (temporaryProviderFailure) {
+      return NextResponse.json({
+        success: true,
+        data: createFallbackRefinement(fallbackDeck, fallbackInstruction),
+        modelUsed: "local-refinement-fallback (Gemini temporarily busy)",
+        warning: "Gemini was temporarily busy, so a local refinement was applied.",
+      });
+    }
+
     return NextResponse.json(
       {
         success: false,
@@ -131,6 +148,29 @@ export async function POST(req: NextRequest) {
       { status: err?.status >= 400 && err?.status < 600 ? err.status : 500 }
     );
   }
+}
+
+function createFallbackRefinement(currentDeck: any, instruction: string) {
+  return {
+    ...currentDeck,
+    cards: [
+      ...(Array.isArray(currentDeck.cards) ? currentDeck.cards : []),
+      {
+        id: `card-refine-fallback-${Date.now()}`,
+        question: `[Refined] What is the key idea behind ${instruction}?`,
+        answer: `Review the existing study material and focus on the requested refinement: ${instruction}.`,
+        hint: "Connect the new instruction to the deck's core concepts.",
+        difficulty: "medium",
+        masteryStatus: "unseen",
+        isStarred: false,
+      },
+    ],
+    keyTakeaways: [
+      ...(Array.isArray(currentDeck.keyTakeaways) ? currentDeck.keyTakeaways : []),
+      `Refined focus: ${instruction}`,
+    ],
+    updatedAt: Date.now(),
+  };
 }
 
 async function generateWithRetry(model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>, prompt: string) {
