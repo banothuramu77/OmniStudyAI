@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Sparkles, ArrowRight, Wand2, X, Zap } from "lucide-react";
 import { DEMO_PRESETS } from "@/lib/demoData";
 import { StudyDeck } from "@/types/study";
@@ -21,11 +21,17 @@ const SAMPLE_PROMPTS = [
 export function PromptInput({ onSubmit, isLoading, onSelectPreset }: PromptInputProps) {
   const [prompt, setPrompt] = useState("");
   const [level, setLevel] = useState<"beginner" | "intermediate" | "advanced">("intermediate");
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const syncPrompt = (value: string) => {
+    setPrompt(value);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim() || isLoading) return;
-    onSubmit(prompt.trim(), level);
+    const currentPrompt = promptInputRef.current?.value ?? prompt;
+    if (!currentPrompt.trim() || isLoading) return;
+    onSubmit(currentPrompt.trim(), level);
   };
 
   return (
@@ -45,8 +51,10 @@ export function PromptInput({ onSubmit, isLoading, onSelectPreset }: PromptInput
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="relative">
           <textarea
+            ref={promptInputRef}
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            onChange={(e) => syncPrompt(e.currentTarget.value)}
+            onInput={(e) => syncPrompt(e.currentTarget.value)}
             placeholder="e.g. Paste notes on Quantum Computing or type 'React 18 Concurrent Rendering, Suspense, and useDeferredValue'..."
             rows={4}
             disabled={isLoading}
